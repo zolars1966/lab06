@@ -254,3 +254,165 @@ e = True
 
 sumint() # 25
 ```
+
+## Задание 4 (10)
+
+### Пример 1. Адреса разных типов в одном блоке
+
+```cpp
+#include <iostream>
+#include <string>
+#include <cstdint>
+
+template <typename T>
+void show(const char* name, T& value) {
+    auto address = reinterpret_cast<std::uintptr_t>(&value);
+    std::cout << name
+              << ": address=" << address
+              << ", sizeof=" << sizeof(value) << '\n';
+}
+
+int main() {
+    char c = 'x';
+    int i = 42;
+    double d = 3.14;
+    long long ll = 100;
+    std::string s = "hello";
+
+    show("char", c);
+    show("int", i);
+    show("double", d);
+    show("long long", ll);
+    show("string", s);
+
+    return 0;
+}
+```
+
+Нулевая оптимизация:
+
+```bash
+zolars@Arsenys-MacBook-Air 04 % g++ -std=c++17 -O0 1.cpp -o 1.out
+zolars@Arsenys-MacBook-Air 04 % ./1.out 
+char: address=6104329659, sizeof=1
+int: address=6104329652, sizeof=4
+double: address=6104329640, sizeof=8
+long long: address=6104329632, sizeof=8
+string: address=6104329608, sizeof=24
+```
+
+Второуровневая оптимизация:
+
+```bash
+zolars@Arsenys-MacBook-Air 04 % g++ -std=c++17 -O2 1.cpp -o 1.out
+zolars@Arsenys-MacBook-Air 04 % ./1.out                          
+char: address=6121745838, sizeof=1
+int: address=6121745832, sizeof=4
+double: address=6121745824, sizeof=8
+long long: address=6121745816, sizeof=8
+string: address=6121745792, sizeof=24
+```
+
+Размеры объектов одинаковы при обоих уровнях оптимизации. При этом адреса переменных отличаются. В обоих запусках адреса расположены в порядке убывания: от `char` к `string`. Расстояния между адресами не всегда совпадают с размерами предыдущих объектов, поскольку размещение переменных зависит от выравнивания и организации памяти.
+
+`string` имеет размер 24 байта: это размер самого объекта `std::string`, а не размер памяти, занятой символами его содержимого.
+
+### Пример 2. Адреса в разных блоках
+
+```cpp
+#include <iostream>
+#include <cstdint>
+
+int main() {
+    {
+        int first = 1;
+        std::cout << "first: "
+                  << reinterpret_cast<std::uintptr_t>(&first) << '\n';
+    }
+
+    {
+        int second = 2;
+        std::cout << "second: "
+                  << reinterpret_cast<std::uintptr_t>(&second) << '\n';
+    }
+
+    return 0;
+}
+```
+
+Нулевая оптимизация:
+
+```bash
+zolars@Arsenys-MacBook-Air 04 % g++ -std=c++17 -O0 2.cpp -o 2.out
+zolars@Arsenys-MacBook-Air 04 % ./2.out 
+first: 6101036472
+second: 6101036468
+```
+
+Второуровневая отпимизация:
+
+```bash
+zolars@Arsenys-MacBook-Air 04 % g++ -std=c++17 -O2 2.cpp -o 2.out
+zolars@Arsenys-MacBook-Air 04 % ./2.out                          
+first: 6103379368
+second: 6103379364
+```
+
+В обоих случаях адрес переменной `second` на 4 байта меньше адреса `first`. Это согласуется с размещением двух целочисленных переменных размером 4 байта рядом в памяти. При этом сами адреса отличаются между запусками, что не позволяет считать их постоянными.
+
+### Пример 3. Размер и адрес `std::string`
+
+```cpp
+#include <iostream>
+#include <string>
+#include <cstdint>
+
+int main() {
+    std::string a;
+    std::string b;
+
+    auto address_a = reinterpret_cast<std::uintptr_t>(&a);
+    auto address_b = reinterpret_cast<std::uintptr_t>(&b);
+
+    std::cout << "empty: sizeof(a)=" << sizeof(a)
+              << ", address(a)=" << address_a << '\n';
+
+    a = "short";
+    b = std::string(1000, 'x');
+
+    std::cout << "after assignment: sizeof(a)=" << sizeof(a)
+              << ", address(a)="
+              << reinterpret_cast<std::uintptr_t>(&a) << '\n';
+    std::cout << "long string: sizeof(b)=" << sizeof(b)
+              << ", address(b)="
+              << reinterpret_cast<std::uintptr_t>(&b) << '\n';
+
+    return 0;
+}
+```
+
+Нулевая оптимизация:
+
+```bash
+zolars@Arsenys-MacBook-Air 04 % g++ -std=c++17 -O0 3.cpp -o 3.out
+zolars@Arsenys-MacBook-Air 04 % ./3.out                          
+empty: sizeof(a)=24, address(a)=6170144144
+after assignment: sizeof(a)=24, address(a)=6170144144
+long string: sizeof(b)=24, address(b)=6170144120
+```
+
+Второуровневая отпимизация:
+
+```bash
+zolars@Arsenys-MacBook-Air 04 % g++ -std=c++17 -O2 3.cpp -o 3.out
+zolars@Arsenys-MacBook-Air 04 % ./3.out                          
+empty: sizeof(a)=24, address(a)=6096760208
+after assignment: sizeof(a)=24, address(a)=6096760208
+long string: sizeof(b)=24, address(b)=6096760184
+```
+
+Размер объекта `a` остаётся равным 24 байтам как до, так и после присваивания строки. Его адрес также не меняется. Это объясняется тем, что присваивание изменяет состояние уже существующего объекта `std::string`, а не создаёт новый объект вместо него.
+
+Объект `b` также занимает 24 байта, хотя содержит длинную строку. Это связано с тем, что `sizeof` возвращает размер самого объекта `std::string`, а память для хранения символов может выделяться отдельно.
+
+Во всех трёх примерах результаты показывают, что уровень оптимизации может влиять на расположение объектов в памяти, но не меняет наблюдаемый размер самих типов. Конкретные адреса зависят от запуска программы и условий её выполнения, поэтому по ним нельзя сделать вывод об универсальном порядке размещения переменных во всех программах.
