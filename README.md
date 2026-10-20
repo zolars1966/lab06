@@ -179,3 +179,31 @@ print("a и c — один объект:", a is c)
 В обоих случаях переменные содержат одинаковую строку. Присваивание `b = a` связывает `b` с тем же объектом, что и `a`. Выражение `a[:]` создаёт срез всей строки, однако Python может вернуть тот же объект. Поэтому в CPython `a is c` также может быть `True`. Строки неизменяемы, поэтому менять их содержимое через одну из переменных нельзя.
 
 <img width="364" height="110" alt="Screenshot 2026-10-21 at 00 06 53" src="https://github.com/user-attachments/assets/050b9de2-dbd0-4318-9e7a-b3eee2498f4f" />
+
+## Задание 9 (3)
+
+В Python имена переменных можно создать динамически через словарь `globals()`. Каждой переменной присваивается отдельное целое значение от 1 до 2600.
+
+```python
+letters = 'abcdefghijklmnopqrstuvwxyz'
+
+for letter_index, letter in enumerate(letters):
+    for number in range(100):
+        name = f'{letter}{number}'
+        globals()[name] = letter_index * 100 + number + 1
+
+# Проверка границ и количества созданных имён
+print(a0)    # 1
+print(a99)   # 100
+print(b0)    # 101
+print(z99)   # 2600
+
+created = [
+    name
+    for letter in letters
+    for name in (f'{letter}{number}' for number in range(100))
+]
+print(len(created))  # 2600
+print(len({globals()[name] for name in created}))  # 2600
+```
+
