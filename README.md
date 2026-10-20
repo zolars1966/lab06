@@ -70,3 +70,85 @@ second: 25
 ```
 
 Одинаковые имена `value` и `print` не конфликтуют, потому что находятся в разных пространствах имён. Полное имя включает пространство имён и имя объекта.
+
+## Задание 6 (2)
+
+В каждой итерации создаётся копия `c(a)`, а затем содержимое строк копируется при присваиваниях.
+
+### Медленный вариант
+
+```cpp
+#include <iostream>
+#include <string>
+
+int main() {
+    std::string a(100000, 'a');
+    std::string b(100000, 'b');
+
+    for (int i = 0; i < 1000000; i++) {
+        std::string c(a);
+        a = b;
+        b = c;
+    }
+
+    std::cout << a[0] << b[0] << '\n';
+
+    return 0;
+}
+```
+
+Команда `time` показала, что программа работала минуту.
+
+<img width="397" height="49" alt="Screenshot 2026-10-20 at 23 17 32" src="https://github.com/user-attachments/assets/403d17e7-f1dd-4bfb-a6cf-8b500117987d" />
+
+### Вариант с `swap`
+
+```cpp
+#include <iostream>
+#include <string>
+
+int main() {
+    std::string a(100000, 'a');
+    std::string b(100000, 'b');
+
+    for (int i = 0; i < 1000000; i++) {
+        a.swap(b);
+    }
+
+    std::cout << a[0] << b[0] << '\n';
+
+    return 0;
+}
+```
+
+Здесь обмен выполняется без копирования всех символов. Команда показала время работы `0.02` секунды.
+
+<img width="394" height="49" alt="Screenshot 2026-10-20 at 23 21 43" src="https://github.com/user-attachments/assets/9f7599b5-b45b-4890-9fed-c6a7337f4812" />
+
+### Быстрый вариант с временной переменной
+
+
+```cpp
+#include <iostream>
+#include <string>
+#include <utility>
+
+int main() {
+    std::string a(100000, 'a');
+    std::string b(100000, 'b');
+
+    for (int i = 0; i < 1000000; i++) {
+        std::string c(std::move(a));
+        a = std::move(b);
+        b = std::move(c);
+    }
+
+    std::cout << a[0] << b[0] << '\n';
+
+    return 0;
+}
+```
+
+`std::move` позволяет использовать семантику перемещения вместо копирования. Команда показала время работы `0.05` секунд.
+
+<img width="392" height="47" alt="Screenshot 2026-10-20 at 23 24 06" src="https://github.com/user-attachments/assets/3707dfb1-c7f1-4d7f-985e-17cb69e5bd42" />
